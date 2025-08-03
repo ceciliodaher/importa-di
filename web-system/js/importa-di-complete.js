@@ -28,10 +28,10 @@ const CONSTANTS = {
     },
 
     ICMS_ALIQUOTAS_UF: {
-        'AC': 17, 'AL': 17, 'AP': 18, 'AM': 18, 'BA': 18, 'CE': 18, 'DF': 18, 'ES': 17,
-        'GO': 19, 'MA': 18, 'MT': 17, 'MS': 17, 'MG': 18, 'PA': 17, 'PB': 18, 'PR': 18,
-        'PE': 18, 'PI': 18, 'RJ': 20, 'RN': 18, 'RS': 18, 'RO': 17.5, 'RR': 17,
-        'SC': 17, 'SP': 18, 'SE': 18, 'TO': 18
+        'AC': 19, 'AL': 20, 'AP': 18, 'AM': 20, 'BA': 20.5, 'CE': 20, 'DF': 20, 'ES': 17,
+        'GO': 19, 'MA': 23, 'MT': 17, 'MS': 17, 'MG': 18, 'PA': 19, 'PB': 20, 'PR': 19.5,
+        'PE': 20.5, 'PI': 22.5, 'RJ': 22, 'RN': 20, 'RS': 17, 'RO': 19.5, 'RR': 20,
+        'SC': 17, 'SP': 18, 'SE': 20, 'TO': 20
     },
 
     DI_XML_PATHS: {
@@ -209,6 +209,7 @@ const CostCalculator = {
         const seguroTotal = seguroEmbutido ? 0.0 : (dados.valores["Seguro R$"] || 0.0);
         const afrmmTotal = dados.valores["AFRMM R$"] || 0.0;
         const siscomexTotal = dados.valores["Siscomex R$"] || 0.0;
+        const outrosCustosTotal = dados.valores["Outros Custos R$"] || 0.0;
 
         // Base de cálculo
         const valorBaseCalculo = (freteEmbutido || seguroEmbutido) ? 
@@ -223,7 +224,8 @@ const CostCalculator = {
             "Frete Considerado R$": freteTotal,
             "Seguro Considerado R$": seguroTotal,
             "AFRMM R$": afrmmTotal,
-            "Siscomex R$": siscomexTotal
+            "Siscomex R$": siscomexTotal,
+            "Outros Custos R$": outrosCustosTotal
         };
 
         // Processar cada adição
@@ -239,13 +241,14 @@ const CostCalculator = {
             const custoSeguroAdicao = percentualAdicao * seguroTotal;
             const custoAfrmmAdicao = percentualAdicao * afrmmTotal;
             const custoSiscomexAdicao = percentualAdicao * siscomexTotal;
+            const custoOutrosAdicao = percentualAdicao * outrosCustosTotal;
 
             // Impostos incorporáveis
             const iiAdicao = adicao.tributos["II R$"];
 
             // Custo total da adição
             const custoTotalAdicao = valorAdicao + custoFreteAdicao + custoSeguroAdicao + 
-                                   custoAfrmmAdicao + custoSiscomexAdicao + iiAdicao;
+                                   custoAfrmmAdicao + custoSiscomexAdicao + custoOutrosAdicao + iiAdicao;
 
             // Adicionar dados de custo à adição
             adicao.custos = {
@@ -254,6 +257,7 @@ const CostCalculator = {
                 "Seguro Rateado R$": custoSeguroAdicao,
                 "AFRMM Rateado R$": custoAfrmmAdicao,
                 "Siscomex Rateado R$": custoSiscomexAdicao,
+                "Outros Custos Rateado R$": custoOutrosAdicao,
                 "II Incorporado R$": iiAdicao,
                 "Custo Total Adição R$": custoTotalAdicao,
                 "% Participação": percentualAdicao * 100,
@@ -294,7 +298,268 @@ const CostCalculator = {
             }
         }
 
+        // Calcular ICMS para cada adição e agregar tributos DI
+        dados.tributos = {
+            'II R$': 0,
+            'IPI R$': 0,
+            'PIS R$': 0,
+            'COFINS R$': 0,
+            'ICMS R$': 0,
+            'Base ICMS R$': 0
+        };
+
+        for (let i = 0; i < dados.adicoes.length; i++) {
+            const adicao = dados.adicoes[i];
+            const valorAdicao = adicao.dadosGerais["VCMV R$"];
+
+            // Percentual da adição
+            const percentualAdicao = valorBaseCalculo > 0 ? valorAdicao / valorBaseCalculo : 0;
+
+            // Ratear custos proporcionais
+            const custoFreteAdicao = percentualAdicao * freteTotal;
+            const custoSeguroAdicao = percentualAdicao * seguroTotal;
+            const custoAfrmmAdicao = percentualAdicao * afrmmTotal;
+            const custoSiscomexAdicao = percentualAdicao * siscomexTotal;
+            const custoOutrosAdicao = percentualAdicao * outrosCustosTotal;
+
+            // Impostos incorporáveis
+            const iiAdicao = adicao.tributos["II R$"];
+
+            // Custo total da adição
+            const custoTotalAdicao = valorAdicao + custoFreteAdicao + custoSeguroAdicao + 
+                                   custoAfrmmAdicao + custoSiscomexAdicao + custoOutrosAdicao + iiAdicao;
+
+            // Adicionar dados de custo à adição
+            adicao.custos = {
+                "Valor Mercadoria R$": valorAdicao,
+                "Frete Rateado R$": custoFreteAdicao,
+                "Seguro Rateado R$": custoSeguroAdicao,
+                "AFRMM Rateado R$": custoAfrmmAdicao,
+                "Siscomex Rateado R$": custoSiscomexAdicao,
+                "Outros Custos Rateado R$": custoOutrosAdicao,
+                "II Incorporado R$": iiAdicao,
+                "Custo Total Adição R$": custoTotalAdicao,
+                "% Participação": percentualAdicao * 100,
+                "Observações": `Base: ${(freteEmbutido || seguroEmbutido) ? 'Valor Aduaneiro' : 'FOB'}`
+            };
+
+            // Agora calcular ICMS com todos os custos definidos
+            const aliquotaICMS = adicao.dadosGerais.ICMS_ALIQUOTA || 19;
+            const valorAduaneiro = adicao.dadosGerais["VCMV R$"] || 0;
+            const ii = adicao.tributos["II R$"] || 0;
+            const ipi = adicao.tributos["IPI R$"] || 0;
+            const pis = adicao.tributos["PIS R$"] || 0;
+            const cofins = adicao.tributos["COFINS R$"] || 0;
+            
+            // Incluir outros custos aduaneiros no cálculo do ICMS
+            const outrasDesp = custoAfrmmAdicao + custoSiscomexAdicao + custoOutrosAdicao;
+            
+            // Usar ICMS calculation method
+            const resultadoICMS = this.calcularICMSPorDentro(
+                valorAduaneiro, ii, ipi, pis, cofins, outrasDesp, aliquotaICMS / 100
+            );
+            
+            // Adicionar ICMS aos tributos da adição
+            adicao.tributos['ICMS R$'] = resultadoICMS.icms;
+            adicao.tributos['Base ICMS R$'] = resultadoICMS.base;
+            adicao.tributos['ICMS Alíq. (%)'] = aliquotaICMS;
+            
+            // Calcular base IPI (Valor Aduaneiro + II)
+            const baseIPI = valorAduaneiro + ii;
+            adicao.tributos['Base IPI R$'] = Math.round(baseIPI * 100) / 100;
+
+            // Processar itens da adição
+            if (adicao.itens) {
+                for (let j = 0; j < adicao.itens.length; j++) {
+                    const item = adicao.itens[j];
+                    const qtdItem = item.Qtd || 0;
+                    const valorTotalItens = adicao.itens.reduce(function(sum, it) {
+                        return sum + (it.Qtd || 0);
+                    }, 0);
+
+                    if (qtdItem > 0 && valorTotalItens > 0) {
+                        const percentualItem = qtdItem / valorTotalItens;
+                        const custoUnitarioItem = custoTotalAdicao * percentualItem / qtdItem;
+                        
+                        item["Custo Total Item R$"] = custoTotalAdicao * percentualItem;
+                        item["Custo Unitário R$"] = custoUnitarioItem;
+
+                        const unidCaixa = item["Unid/Caixa"];
+                        if (typeof unidCaixa === 'number' && unidCaixa > 0) {
+                            const custoPorPeca = custoUnitarioItem / (item.Qtd * unidCaixa);
+                            item["Custo por Peça R$"] = custoPorPeca;
+                        } else {
+                            item["Custo por Peça R$"] = "N/A";
+                        }
+                    } else {
+                        item["Custo Total Item R$"] = 0;
+                        item["Custo Unitário R$"] = 0;
+                        item["Custo por Peça R$"] = 0;
+                    }
+                }
+            }
+            
+            // Agregar aos tributos da DI
+            dados.tributos['II R$'] += ii;
+            dados.tributos['IPI R$'] += ipi;
+            dados.tributos['PIS R$'] += pis;
+            dados.tributos['COFINS R$'] += cofins;
+            dados.tributos['ICMS R$'] += resultadoICMS.icms;
+            dados.tributos['Base ICMS R$'] += resultadoICMS.base;
+        }
+
         return dados;
+    },
+
+    gerarMemoriaCalculos: function(dados) {
+        const memoria = [];
+        
+        // Cabeçalho da memória de cálculo
+        memoria.push(['=== MEMÓRIA DE CÁLCULO DETALHADA - IMPORTAÇÃO ===']);
+        memoria.push([`DI: ${dados.cabecalho.DI}`]);
+        memoria.push([`Data: ${new Date().toLocaleDateString('pt-BR')}`]);
+        memoria.push(['']);
+        
+        // Resumo Geral
+        memoria.push(['RESUMO GERAL DA DI']);
+        memoria.push(['Valor FOB R$:', dados.valores['FOB R$'] || 0]);
+        memoria.push(['Valor Aduaneiro R$:', dados.valores['Valor Aduaneiro R$'] || 0]);
+        memoria.push(['Frete R$:', dados.valores['Frete R$'] || 0]);
+        memoria.push(['Seguro R$:', dados.valores['Seguro R$'] || 0]);
+        memoria.push(['']);
+        
+        // Tributos Totais da DI
+        memoria.push(['TRIBUTOS TOTAIS DA DI']);
+        memoria.push(['II R$:', dados.tributos['II R$'] || 0]);
+        memoria.push(['IPI R$:', dados.tributos['IPI R$'] || 0]);
+        memoria.push(['PIS R$:', dados.tributos['PIS R$'] || 0]);
+        memoria.push(['COFINS R$:', dados.tributos['COFINS R$'] || 0]);
+        memoria.push(['Base ICMS R$:', dados.tributos['Base ICMS R$'] || 0]);
+        memoria.push(['ICMS R$:', dados.tributos['ICMS R$'] || 0]);
+        memoria.push(['']);
+        
+        // Detalhamento por Adição
+        for (let i = 0; i < dados.adicoes.length; i++) {
+            const adicao = dados.adicoes[i];
+            memoria.push([`=== ADIÇÃO ${adicao.numero} ===`]);
+            memoria.push(['NCM:', adicao.dadosGerais.NCM]);
+            memoria.push(['Descrição:', adicao.dadosGerais.Descrição]);
+            memoria.push(['VCMV R$:', adicao.dadosGerais['VCMV R$']]);
+            memoria.push(['']);
+            
+            // Tributos da Adição
+            memoria.push(['TRIBUTOS DA ADIÇÃO']);
+            memoria.push(['II Alíq. (%):', `${adicao.tributos['II Alíq. (%)']}%`]);
+            memoria.push(['II R$:', adicao.tributos['II R$']]);
+            memoria.push(['IPI Alíq. (%):', `${adicao.tributos['IPI Alíq. (%)']}%`]);
+            memoria.push(['Base IPI R$:', adicao.tributos['Base IPI R$'] || 0]);
+            memoria.push(['IPI R$:', adicao.tributos['IPI R$']]);
+            memoria.push(['PIS Alíq. (%):', `${adicao.tributos['PIS Alíq. (%)']}%`]);
+            memoria.push(['PIS R$:', adicao.tributos['PIS R$']]);
+            memoria.push(['COFINS Alíq. (%):', `${adicao.tributos['COFINS Alíq. (%)']}%`]);
+            memoria.push(['COFINS R$:', adicao.tributos['COFINS R$']]);
+            memoria.push(['']);
+            
+            // Cálculo ICMS Detalhado
+            memoria.push(['CÁLCULO ICMS - ADIÇÃO ' + adicao.numero]);
+            const aliquotaICMS = adicao.dadosGerais.ICMS_ALIQUOTA || 19;
+            const valorAduaneiro = adicao.dadosGerais['VCMV R$'] || 0;
+            const ii = adicao.tributos['II R$'] || 0;
+            const ipi = adicao.tributos['IPI R$'] || 0;
+            const pis = adicao.tributos['PIS R$'] || 0;
+            const cofins = adicao.tributos['COFINS R$'] || 0;
+            
+            memoria.push(['Valor Aduaneiro (VDI):', valorAduaneiro]);
+            memoria.push(['II:', ii]);
+            memoria.push(['IPI:', ipi]);
+            memoria.push(['PIS:', pis]);
+            memoria.push(['COFINS:', cofins]);
+            memoria.push(['Outras Despesas:', 0]);
+            
+            const somaBase = valorAduaneiro + ii + ipi + pis + cofins;
+            memoria.push(['Soma Base (VDI+II+IPI+PIS+COFINS):', somaBase]);
+            memoria.push(['Alíquota ICMS (%):', aliquotaICMS]);
+            memoria.push(['Alíquota ICMS (decimal):', aliquotaICMS / 100]);
+            
+            const baseICMS = aliquotaICMS > 0 ? somaBase / (1 - aliquotaICMS / 100) : somaBase;
+            const valorICMS = baseICMS * (aliquotaICMS / 100);
+            
+            memoria.push(['Fórmula: Base ICMS = Soma Base / (1 - alíquota)']);
+            memoria.push(['Base ICMS Calculada:', Math.round(baseICMS * 100) / 100]);
+            memoria.push(['ICMS Calculado (Base x Alíquota):', Math.round(valorICMS * 100) / 100]);
+            memoria.push(['']);
+            
+            // Memória de Cálculo dos Custos Detalhada
+            memoria.push(['MEMÓRIA DE CÁLCULO DOS CUSTOS - ADIÇÃO ' + adicao.numero]);
+            if (adicao.custos) {
+                memoria.push(['Valor da Mercadoria (VCMV):', adicao.custos['Valor Mercadoria R$'] || 0]);
+                memoria.push(['']);
+                
+                // Custos Rateados
+                memoria.push(['CUSTOS RATEADOS PROPORCIONALMENTE:']);
+                const percentualAdicao = adicao.custos['% Participação'] || 0;
+                memoria.push(['% Participação da Adição:', `${percentualAdicao.toFixed(4)}%`]);
+                memoria.push(['']);
+                
+                memoria.push(['Frete Total da DI R$:', dados.valores['Frete R$'] || 0]);
+                memoria.push(['Frete Rateado R$:', adicao.custos['Frete Rateado R$'] || 0]);
+                memoria.push(['Cálculo: Frete Total × % Participação']);
+                memoria.push(['']);
+                
+                memoria.push(['Seguro Total da DI R$:', dados.valores['Seguro R$'] || 0]);
+                memoria.push(['Seguro Rateado R$:', adicao.custos['Seguro Rateado R$'] || 0]);
+                memoria.push(['Cálculo: Seguro Total × % Participação']);
+                memoria.push(['']);
+                
+                memoria.push(['AFRMM Total da DI R$:', dados.valores['AFRMM R$'] || 0]);
+                memoria.push(['AFRMM Rateado R$:', adicao.custos['AFRMM Rateado R$'] || 0]);
+                memoria.push(['Cálculo: AFRMM Total × % Participação']);
+                memoria.push(['']);
+                
+                memoria.push(['Siscomex Total da DI R$:', dados.valores['Siscomex R$'] || 0]);
+                memoria.push(['Siscomex Rateado R$:', adicao.custos['Siscomex Rateado R$'] || 0]);
+                memoria.push(['Cálculo: Siscomex Total × % Participação']);
+                memoria.push(['']);
+                
+                if (dados.valores['Outros Custos R$']) {
+                    memoria.push(['Outros Custos Total da DI R$:', dados.valores['Outros Custos R$'] || 0]);
+                    memoria.push(['Outros Custos Rateado R$:', adicao.custos['Outros Custos Rateado R$'] || 0]);
+                    memoria.push(['Cálculo: Outros Custos Total × % Participação']);
+                    memoria.push(['']);
+                }
+                
+                memoria.push(['II Incorporado R$:', adicao.custos['II Incorporado R$'] || 0]);
+                memoria.push(['']);
+                
+                // Cálculo do Custo Total
+                memoria.push(['CÁLCULO DO CUSTO TOTAL DA ADIÇÃO:']);
+                memoria.push(['= Valor Mercadoria + Frete Rateado + Seguro Rateado']);
+                memoria.push(['+ AFRMM Rateado + Siscomex Rateado + Outros Custos + II']);
+                memoria.push(['Custo Total da Adição R$:', adicao.custos['Custo Total Adição R$'] || 0]);
+                memoria.push(['']);
+            }
+            
+            // Itens da Adição
+            if (adicao.itens && adicao.itens.length > 0) {
+                memoria.push(['ITENS DA ADIÇÃO']);
+                memoria.push(['Seq', 'Código', 'Descrição', 'Qtd', 'Custo Unit R$', 'Custo Total R$']);
+                
+                adicao.itens.forEach(function(item) {
+                    memoria.push([
+                        item.Seq || '',
+                        item.Código || '',
+                        item.Descrição || '',
+                        item.Qtd || 0,
+                        item['Custo Unitário R$'] || 0,
+                        item['Custo Total Item R$'] || 0
+                    ]);
+                });
+                memoria.push(['']);
+            }
+            memoria.push(['']);
+        }
+        
+        return memoria;
     },
 
     validarCustos: function(dados, freteEmbutido, seguroEmbutido) {
@@ -328,6 +593,7 @@ const CostCalculator = {
         // Adicionar despesas extras e impostos
         valorEsperado += (dados.valores["AFRMM R$"] || 0) + 
                         (dados.valores["Siscomex R$"] || 0) + 
+                        (dados.valores["Outros Custos R$"] || 0) +
                         dados.tributos["II R$"];
 
         const diferenca = Math.abs(custoTotalCalculado - valorEsperado);
@@ -340,6 +606,63 @@ const CostCalculator = {
             "% Diferença": percentualDiferenca,
             "Status": percentualDiferenca < 0.01 ? "OK" : "DIVERGÊNCIA",
             "Configuração": `Frete: ${freteEmbutido ? 'Embutido' : 'Separado'}, Seguro: ${seguroEmbutido ? 'Embutido' : 'Separado'}`
+        };
+    },
+
+    /**
+     * Calcula ICMS na importação usando a fórmula correta:
+     * BC ICMS = (VDI + II + IPI + PIS + COFINS + Despesas) / (1 - alíquota)
+     * ICMS = BC ICMS × alíquota
+     */
+    calcularICMSPorDentro: function(valorAduaneiro, ii, ipi, pis, cofins, outrasDesp, aliquota) {
+        // Validar parâmetros
+        valorAduaneiro = parseFloat(valorAduaneiro) || 0;
+        ii = parseFloat(ii) || 0;
+        ipi = parseFloat(ipi) || 0;
+        pis = parseFloat(pis) || 0;
+        cofins = parseFloat(cofins) || 0;
+        outrasDesp = parseFloat(outrasDesp) || 0;
+        aliquota = parseFloat(aliquota) || 0;
+
+        // Somatório antes da inclusão do ICMS
+        const somaBase = valorAduaneiro + ii + ipi + pis + cofins + outrasDesp;
+        
+        // Base de cálculo com ICMS incluído (fórmula por dentro)
+        const baseICMS = aliquota > 0 ? somaBase / (1 - aliquota) : somaBase;
+        
+        // Valor do ICMS
+        const valorICMS = baseICMS * aliquota;
+
+        return {
+            base: Math.round(baseICMS * 100) / 100,
+            icms: Math.round(valorICMS * 100) / 100,
+            somaBase: Math.round(somaBase * 100) / 100
+        };
+    },
+
+    /**
+     * Calcula custos de uma adição específica
+     */
+    calcularCustosAdicao: function(adicao, index) {
+        // Se a adição já tem custos calculados, retorna
+        if (adicao.custos) {
+            return adicao.custos;
+        }
+        
+        // Calcular custos básicos para esta adição
+        const valorAdicao = adicao.dadosGerais["VCMV R$"] || 0;
+        const iiAdicao = adicao.tributos["II R$"] || 0;
+        
+        return {
+            "Valor Mercadoria R$": valorAdicao,
+            "Frete Rateado R$": 0,
+            "Seguro Rateado R$": 0,
+            "AFRMM Rateado R$": 0,
+            "Siscomex Rateado R$": 0,
+            "II Incorporado R$": iiAdicao,
+            "Custo Total Adição R$": valorAdicao + iiAdicao,
+            "% Participação": 0,
+            "Observações": "Cálculo individual da adição"
         };
     }
 };
@@ -799,7 +1122,7 @@ const ExportSystem = {
             const cstIcms = '00';
             const icmsAliq = adicao.dadosGerais.ICMS_ALIQUOTA || 19.0; // usar alíquota específica da adição
             const ipiCst = '00';
-            const ipiAliq = Math.round((adicao.tributos['IPI Alíq. (%)'] || 0) * 100 * 100) / 100;
+            const ipiAliq = adicao.tributos['IPI Alíq. (%)'] || 0;
 
             adicao.itens.forEach(function(item) {
                 const valorUnitBRL = item['Custo Unitário R$'] || 0;
@@ -823,7 +1146,7 @@ const ExportSystem = {
         croquisData.push(['IPI', dados.tributos['IPI R$']]);
         croquisData.push(['PIS', dados.tributos['PIS R$']]);
         croquisData.push(['COFINS', dados.tributos['COFINS R$']]);
-        const outrasDesp = (dados.valores['Siscomex R$'] || 0) + (dados.valores['AFRMM R$'] || 0);
+        const outrasDesp = (dados.valores['Siscomex R$'] || 0) + (dados.valores['AFRMM R$'] || 0) + (dados.valores['Outros Custos R$'] || 0);
         croquisData.push(['Outras despesas', outrasDesp]);
 
         const baseIcmsSemIcms = (
@@ -842,10 +1165,11 @@ const ExportSystem = {
             aliquotaMedia = somaAliquotas / dados.adicoes.length;
         }
         
-        const aliq = aliquotaMedia / 100;
-        const baseFinalIcms = Math.round(baseIcmsSemIcms / (1 - aliq) * 100) / 100;
+        // Usar valores de ICMS já calculados nos tributos da DI
+        const baseFinalIcms = dados.tributos['Base ICMS R$'] || 0;
+        const icmsARecolher = dados.tributos['ICMS R$'] || 0;
         croquisData.push(['Base Final do ICMS', baseFinalIcms]);
-        croquisData.push(['ICMS a Recolher', Math.round(baseFinalIcms * aliq * 100) / 100]);
+        croquisData.push(['ICMS a Recolher', icmsARecolher]);
         croquisData.push(['', '']);
 
         // INFORMAÇÕES COMPLEMENTARES / OBSERVAÇÕES OBRIGATÓRIAS
@@ -873,6 +1197,12 @@ const ExportSystem = {
             XLSX.utils.book_append_sheet(workbook, complementarWS, '99_Complementar');
             complementarWS['!cols'] = [{ wch: 120 }];
         }
+
+        // Aba Memória de Cálculo Detalhada
+        const memoriaData = CostCalculator.gerarMemoriaCalculos(dados);
+        const memoriaWS = XLSX.utils.aoa_to_sheet(memoriaData);
+        XLSX.utils.book_append_sheet(workbook, memoriaWS, 'Memoria_Calculo');
+        memoriaWS['!cols'] = [{ wch: 40 }, { wch: 20 }];
 
         // Download do arquivo
         const filename = `Extrato_DI_${dados.cabecalho.DI}_${new Date().toISOString().slice(0,10)}.xlsx`;
@@ -1166,7 +1496,8 @@ DIXMLParser.prototype.extractCarga = function() {
 };
 
 DIXMLParser.prototype.extractValores = function() {
-    return {
+    // Extrair valores básicos dos campos XML
+    const valores = {
         'FOB USD': Utils.parseNumericField(this.getTextContent(CONSTANTS.DI_XML_PATHS.FOB_USD) || '0'),
         'FOB R$': Utils.parseNumericField(this.getTextContent(CONSTANTS.DI_XML_PATHS.FOB_BRL) || '0'),
         'Frete USD': Utils.parseNumericField(this.getTextContent(CONSTANTS.DI_XML_PATHS.FRETE_USD) || '0'),
@@ -1174,8 +1505,73 @@ DIXMLParser.prototype.extractValores = function() {
         'Seguro R$': Utils.parseNumericField(this.getTextContent(CONSTANTS.DI_XML_PATHS.SEGURO_BRL) || '0'),
         'AFRMM R$': Utils.parseNumericField(this.getTextContent(CONSTANTS.DI_XML_PATHS.AFRMM) || '0'),
         'Siscomex R$': Utils.parseNumericField(this.getTextContent(CONSTANTS.DI_XML_PATHS.SISCOMEX) || '0'),
-        'Valor Aduaneiro R$': Utils.parseNumericField(this.getTextContent(CONSTANTS.DI_XML_PATHS.VALOR_ADUANEIRO) || '0')
+        'Valor Aduaneiro R$': Utils.parseNumericField(this.getTextContent(CONSTANTS.DI_XML_PATHS.VALOR_ADUANEIRO) || '0'),
+        'Cotação USD': this.extractTaxaConversao()
     };
+    
+    // Extrair informação complementar para buscar valores que podem não estar nos campos específicos
+    const informacaoComplementar = this.getTextContent('informacaoComplementar') || '';
+    
+    // Se SISCOMEX não foi encontrado nos campos XML ou está zerado, buscar na informação complementar
+    if (valores['Siscomex R$'] === 0 && informacaoComplementar) {
+        const siscomexMatch = informacaoComplementar.match(/SISCOMEX.*?R\$\s*([\d.,]+)/i);
+        if (siscomexMatch) {
+            valores['Siscomex R$'] = parseFloat(siscomexMatch[1].replace(/\./g, '').replace(',', '.')) || 0;
+        }
+    }
+    
+    // Se AFRMM não foi encontrado nos campos XML ou está zerado, buscar na informação complementar
+    if (valores['AFRMM R$'] === 0 && informacaoComplementar) {
+        const afrmmMatch = informacaoComplementar.match(/AFRMM.*?R\$\s*([\d.,]+)/i);
+        if (afrmmMatch) {
+            valores['AFRMM R$'] = parseFloat(afrmmMatch[1].replace(/\./g, '').replace(',', '.')) || 0;
+        }
+    }
+    
+    // Buscar outros custos portuários (capatazia, armazenagem, etc.)
+    if (informacaoComplementar) {
+        let outrosCustos = 0;
+        
+        // Capatazia
+        const capataziaMatch = informacaoComplementar.match(/CAPATAZIA.*?R\$\s*([\d.,]+)/i);
+        if (capataziaMatch) {
+            outrosCustos += parseFloat(capataziaMatch[1].replace(/\./g, '').replace(',', '.')) || 0;
+        }
+        
+        // Armazenagem
+        const armazenagemMatch = informacaoComplementar.match(/ARMAZENAGEM.*?R\$\s*([\d.,]+)/i);
+        if (armazenagemMatch) {
+            outrosCustos += parseFloat(armazenagemMatch[1].replace(/\./g, '').replace(',', '.')) || 0;
+        }
+        
+        // Taxa de liberação
+        const liberacaoMatch = informacaoComplementar.match(/LIBERACAO.*?R\$\s*([\d.,]+)/i);
+        if (liberacaoMatch) {
+            outrosCustos += parseFloat(liberacaoMatch[1].replace(/\./g, '').replace(',', '.')) || 0;
+        }
+        
+        if (outrosCustos > 0) {
+            valores['Outros Custos R$'] = outrosCustos;
+        }
+    }
+    
+    return valores;
+};
+
+DIXMLParser.prototype.extractTaxaConversao = function() {
+    try {
+        // Buscar a taxa de conversão no texto completo do XML
+        const xmlText = this.xmlDoc.documentElement.textContent || '';
+        const match = xmlText.match(/FOB\s*\(DOLAR\s+ESTADOS\s+UNIDOS\)[.\s]*:\s*([\d,]+)/i);
+        if (match && match[1]) {
+            // Converter o formato brasileiro (5,2177) para formato numérico (5.2177)
+            return parseFloat(match[1].replace(',', '.'));
+        }
+        return 0;
+    } catch (error) {
+        console.warn('Erro ao extrair taxa de conversão:', error);
+        return 0;
+    }
 };
 
 DIXMLParser.prototype.extractAdicoes = function() {
@@ -1746,8 +2142,7 @@ ImportDIApp.prototype.handleICMSChange = function(adicaoIndex, novaAliquota) {
         const valores = adicao.valores;
         
         // Recalcular ICMS com nova alíquota
-        const calculator = new CostCalculator(this.currentDIData);
-        const novosResultados = calculator.calcularICMSPorDentro(
+        const novosResultados = CostCalculator.calcularICMSPorDentro(
             valores['Valor Aduaneiro R$'],
             tributos['II R$'],
             tributos['IPI R$'],
@@ -1762,8 +2157,7 @@ ImportDIApp.prototype.handleICMSChange = function(adicaoIndex, novaAliquota) {
         adicao.tributos['Base ICMS R$'] = novosResultados.base;
         
         // Recalcular custos totais
-        const custoCalculator = new CostCalculator(this.currentDIData);
-        adicao.custos = custoCalculator.calcularCustosAdicao(adicao, adicaoIndex);
+        adicao.custos = CostCalculator.calcularCustosAdicao(adicao, adicaoIndex);
         
         // Atualizar display
         this.populateResultsTable();
@@ -2045,11 +2439,62 @@ ImportDIApp.prototype.enableProcessButton = function() {
 };
 
 ImportDIApp.prototype.enableExportButtons = function() {
-    const exportButtons = ['exportExcelBtn', 'exportCSVBtn', 'exportPDFBtn', 'saveConfigBtn'];
+    const exportButtons = ['exportExcelBtn', 'exportCSVBtn', 'exportPDFBtn', 'invoiceSketchBtn', 'saveConfigBtn'];
     exportButtons.forEach(function(id) {
         const button = document.getElementById(id);
         if (button) button.disabled = false;
     });
+    
+    // Update invoice sketch data if available
+    if (window.InvoiceSketch && this.currentDIData) {
+        // Prepare processed data structure for the invoice sketch
+        const processedData = {
+            cotacao: this.currentDIData.valores?.['Cotação USD'] || 0,
+            totais: {
+                valorMercadorias: this.currentDIData.valores?.['FOB R$'] || 0,
+                valorICMS: this.currentDIData.tributos?.['ICMS R$'] || 0,
+                valorIPI: this.currentDIData.tributos?.['IPI R$'] || 0,
+                valorII: this.currentDIData.tributos?.['II R$'] || 0,
+                valorPIS: this.currentDIData.tributos?.['PIS R$'] || 0,
+                valorCOFINS: this.currentDIData.tributos?.['COFINS R$'] || 0,
+                frete: this.currentDIData.valores?.['Frete R$'] || 0,
+                seguro: this.currentDIData.valores?.['Seguro R$'] || 0,
+                baseICMS: this.currentValidation?.['Base ICMS Total'] || 0,
+                valorTotal: this.currentValidation?.['Custo Total Calculado'] || 0,
+                despesasAcessorias: 0
+            },
+            custosPorItem: this.extractItemCosts()
+        };
+        
+        window.InvoiceSketch.updateData(this.currentDIData, processedData);
+    }
+};
+
+// Helper method to extract costs per item
+ImportDIApp.prototype.extractItemCosts = function() {
+    const custosPorItem = {};
+    
+    if (this.currentDIData && this.currentDIData.adicoes) {
+        this.currentDIData.adicoes.forEach((adicao, adicaoIndex) => {
+            if (adicao.itens) {
+                adicao.itens.forEach((item, itemIndex) => {
+                    const key = `${adicaoIndex}-${itemIndex}`;
+                    
+                    // Calcular bases e valores proporcionais por item
+                    const proporcaoItem = adicao.itens.length > 0 ? (item.Qtd || 0) / adicao.itens.reduce((sum, it) => sum + (it.Qtd || 0), 0) : 0;
+                    
+                    custosPorItem[key] = {
+                        bcICMS: (adicao.tributos?.['Base ICMS R$'] || 0) * proporcaoItem,
+                        valorICMS: (adicao.tributos?.['ICMS R$'] || 0) * proporcaoItem,
+                        bcIPI: (adicao.tributos?.['Base IPI R$'] || 0) * proporcaoItem,
+                        valorIPI: (adicao.tributos?.['IPI R$'] || 0) * proporcaoItem
+                    };
+                });
+            }
+        });
+    }
+    
+    return custosPorItem;
 };
 
 ImportDIApp.prototype.showError = function(title, message, details) {

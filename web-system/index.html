@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/expertzy-brand.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/invoice-sketch.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
@@ -279,6 +280,12 @@
                         <span class="export-description">Resumo executivo formatado</span>
                     </button>
                     
+                    <button class="export-btn" id="invoiceSketchBtn" disabled>
+                        <span class="export-icon">📄</span>
+                        <span class="export-label">Croqui da NF</span>
+                        <span class="export-description">Geração de croqui da nota fiscal de entrada</span>
+                    </button>
+                    
                     <button class="export-btn" id="saveConfigBtn" disabled>
                         <span class="export-icon">💾</span>
                         <span class="export-label">Salvar Dados</span>
@@ -332,7 +339,13 @@
     <!-- Biblioteca jsPDF para exportação PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
+    <!-- jsPDF AutoTable plugin para tabelas em PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
     <!-- JavaScript Completo com Engine de Cálculo (funciona sem servidor local) -->
     <script src="js/importa-di-complete.js"></script>
+    
+    <!-- Invoice Sketch System (compatible with file://) -->
+    <script src="js/invoiceSketch.js"></script>
 </body>
 </html>

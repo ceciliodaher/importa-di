@@ -337,6 +337,7 @@ Components CSS - Componentes reutilizáveis da aplicação
     border-radius: var(--radius-sm);
 }
 
+/* Scrollbar thumb hover state */
 .table-responsive::-webkit-scrollbar-thumb:hover {
     background: var(--expertzy-blue);
 }

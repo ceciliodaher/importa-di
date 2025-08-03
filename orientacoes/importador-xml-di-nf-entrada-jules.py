@@ -342,13 +342,25 @@ def gera_excel_completo(d: dict, xlsx: Path):
         money = wb.add_format({"num_format": "#,##0.00"})
         percent = wb.add_format({"num_format": "0.00%"})
 
+        def add_table(worksheet, df, style="Table Style Medium 2"):
+            """Adiciona uma tabela do Excel à planilha."""
+            (rows, cols) = df.shape
+            # O cabeçalho é adicionado por to_excel, então a tabela tem 'rows' linhas de dados.
+            # O intervalo da tabela inclui a linha do cabeçalho.
+            worksheet.add_table(0, 0, rows, cols - 1, {
+                'style': style,
+                'columns': [{'header': str(c)} for c in df.columns]
+            })
+
         def simples(dic, aba, larg0=26, larg1=50):
-            df_data = pd.DataFrame.from_dict(dic, orient="index", columns=["Valor"])
-            df_data.to_excel(wr, aba)
+            # Converte o dicionário para um DataFrame com as colunas corretas
+            df_data = pd.DataFrame(list(dic.items()), columns=["Campo", "Valor"])
+            df_data.to_excel(wr, sheet_name=aba, index=False, header=True)
             ws = wr.sheets[aba]
             ws.set_column(0, 0, larg0)
             ws.set_column(1, 1, larg1)
-            ws.write_row(0, 0, ["Campo", "Valor"], hdr)
+            # Adiciona a formatação de tabela
+            add_table(ws, df_data)
 
         # Abas gerais
         simples(d["cabecalho"], "01_Capa")
@@ -358,37 +370,40 @@ def gera_excel_completo(d: dict, xlsx: Path):
 
         # NOVA ABA: Configuração de Custos
         if "configuracao_custos" in d:
-            config_df = pd.DataFrame.from_dict(d["configuracao_custos"], orient="index", columns=["Valor"])
-            config_df.to_excel(wr, "04A_Config_Custos")
+            config_df = pd.DataFrame(list(d["configuracao_custos"].items()), columns=["Configuração", "Valor"])
+            config_df.to_excel(wr, "04A_Config_Custos", index=False)
             ws = wr.sheets["04A_Config_Custos"]
             ws.set_column(0, 0, 25)
             ws.set_column(1, 1, 25, money)
-            ws.write_row(0, 0, ["Configuração", "Valor"], hdr_config)
+            add_table(ws, config_df, style="Table Style Medium 3")
 
         # Tributos totais
-        pd.Series(d["tributos"]).rename("Total (R$)").to_frame().to_excel(wr, "05_Tributos_Totais")
+        tributos_df = pd.Series(d["tributos"]).rename("Total (R$)").to_frame().reset_index()
+        tributos_df.columns = ["Imposto", "Total (R$)"]
+        tributos_df.to_excel(wr, "05_Tributos_Totais", index=False)
         ws = wr.sheets["05_Tributos_Totais"]
         ws.set_column(0, 0, 20)
         ws.set_column(1, 1, 14, money)
-        ws.write_row(0, 0, ["Imposto", "Total (R$)"], hdr)
+        add_table(ws, tributos_df)
 
         # Validação de custos
         if "validacao_custos" in d:
-            validacao_df = pd.DataFrame.from_dict(d["validacao_custos"], orient="index", columns=["Valor"])
-            validacao_df.to_excel(wr, "05A_Validacao_Custos")
+            validacao_df = pd.DataFrame(list(d["validacao_custos"].items()), columns=["Métrica", "Valor"])
+            validacao_df.to_excel(wr, "05A_Validacao_Custos", index=False)
             ws = wr.sheets["05A_Validacao_Custos"]
             ws.set_column(0, 0, 25)
             ws.set_column(1, 1, 25)
-            ws.write_row(0, 0, ["Métrica", "Valor"], hdr)
 
             # Colorir status
-            for i, (idx, row) in enumerate(validacao_df.iterrows(), 2):
-                if idx == "Status":
+            for i, row in validacao_df.iterrows():
+                if row["Métrica"] == "Status":
                     status_format = wb.add_format(
                         {"bold": True, "bg_color": "#90EE90" if row["Valor"] == "OK" else "#FFB6C1"})
-                    ws.write(i, 1, row["Valor"], status_format)
-                elif "R$" in str(row["Valor"]) or idx in ["Custo Total Calculado", "Valor Esperado", "Diferença"]:
-                    ws.write(i, 1, row["Valor"], money)
+                    ws.write(i + 1, 1, row["Valor"], status_format)
+                elif "R$" in str(row["Métrica"]) or row["Métrica"] in ["Custo Total Calculado", "Valor Esperado", "Diferença"]:
+                     ws.write(i + 1, 1, row["Valor"], money)
+
+            add_table(ws, validacao_df, style="Table Style Medium 4")
 
         # Resumo de adições COM CUSTOS
         resumo_adicoes = []
@@ -415,6 +430,8 @@ def gera_excel_completo(d: dict, xlsx: Path):
             df_resumo.to_excel(wr, "06_Resumo_Adicoes", index=False)
             ws = wr.sheets["06_Resumo_Adicoes"]
             ws.freeze_panes(1, 0)
+            add_table(ws, df_resumo, style="Table Style Medium 9")
+
 
             # Configurar colunas
             for col, width in enumerate([5, 12, 50, 10, 12, 15, 12, 16]):
@@ -423,11 +440,6 @@ def gera_excel_completo(d: dict, xlsx: Path):
             # Formatar colunas monetárias
             for c in [4, 5, 6, 7]:
                 ws.set_column(c, c, None, money)
-
-            # Cabeçalhos
-            for c in range(len(df_resumo.columns)):
-                header_format = hdr_custo if "Custo" in df_resumo.columns[c] else hdr
-                ws.write(0, c, df_resumo.columns[c], header_format)
 
         # Resumo de custos por adição
         resumo_custos = []
@@ -453,6 +465,7 @@ def gera_excel_completo(d: dict, xlsx: Path):
             df_custos.to_excel(wr, "06A_Resumo_Custos", index=False)
             ws = wr.sheets["06A_Resumo_Custos"]
             ws.freeze_panes(1, 0)
+            add_table(ws, df_custos, style="Table Style Medium 10")
 
             # Configurar larguras
             for col, width in enumerate([8, 12, 10, 15, 12, 12, 12, 12, 15, 15, 12]):
@@ -463,10 +476,6 @@ def gera_excel_completo(d: dict, xlsx: Path):
                 ws.set_column(c, c, None, money)
             ws.set_column(10, 10, None, percent)  # % Participação
 
-            # Cabeçalhos
-            for c in range(len(df_custos.columns)):
-                ws.write(0, c, df_custos.columns[c], hdr_custo)
-
         # Criar aba para cada adição com custos
         for i, ad in enumerate(d["adicoes"], 1):
             numero_adicao = ad["numero"] or str(i).zfill(3)
@@ -475,126 +484,71 @@ def gera_excel_completo(d: dict, xlsx: Path):
             ws = wb.add_worksheet(aba_nome)
             current_row = 0
 
-            # SEÇÃO 1: DADOS GERAIS
-            ws.write(current_row, 0, "DADOS GERAIS", hdr_secao)
-            ws.write(current_row, 1, "", hdr_secao)
-            current_row += 1
-
-            ws.write(current_row, 0, "Campo", hdr)
-            ws.write(current_row, 1, "Valor", hdr)
-            current_row += 1
-
-            for campo, valor in ad["dados_gerais"].items():
-                ws.write(current_row, 0, campo)
-                if isinstance(valor, (int, float)) and campo in ["VCMV R$", "Peso líq. (kg)"]:
-                    ws.write(current_row, 1, valor, money)
-                else:
-                    ws.write(current_row, 1, valor)
+            def write_section_as_table(title, data_dict, header_format, col1_name="Campo", col2_name="Valor"):
+                nonlocal current_row
+                ws.merge_range(current_row, 0, current_row, 1, title, header_format)
+                current_row += 1
+                
+                start_table_row = current_row
+                ws.write(current_row, 0, col1_name, hdr)
+                ws.write(current_row, 1, col2_name, hdr)
                 current_row += 1
 
-            current_row += 1
-
-            # SEÇÃO 2: PARTES ENVOLVIDAS
-            ws.write(current_row, 0, "PARTES ENVOLVIDAS", hdr_secao)
-            ws.write(current_row, 1, "", hdr_secao)
-            current_row += 1
-
-            ws.write(current_row, 0, "Campo", hdr)
-            ws.write(current_row, 1, "Valor", hdr)
-            current_row += 1
-
-            for campo, valor in ad["partes"].items():
-                ws.write(current_row, 0, campo)
-                ws.write(current_row, 1, valor)
-                current_row += 1
-
-            current_row += 1
-
-            # SEÇÃO 3: TRIBUTOS
-            ws.write(current_row, 0, "TRIBUTOS", hdr_secao)
-            ws.write(current_row, 1, "", hdr_secao)
-            current_row += 1
-
-            ws.write(current_row, 0, "Campo", hdr)
-            ws.write(current_row, 1, "Valor", hdr)
-            current_row += 1
-
-            for campo, valor in ad["tributos"].items():
-                ws.write(current_row, 0, campo)
-                if isinstance(valor, (int, float)) and ("R$" in campo or "%" in campo):
-                    if "%" in campo:
-                        ws.write(current_row, 1, valor / 100, percent)
-                    else:
-                        ws.write(current_row, 1, valor, money)
-                else:
-                    ws.write(current_row, 1, valor)
-                current_row += 1
-
-            current_row += 1
-
-            # SEÇÃO 4: ANÁLISE DE CUSTOS
-            if "custos" in ad:
-                ws.write(current_row, 0, "ANÁLISE DE CUSTOS", hdr_custo)
-                ws.write(current_row, 1, "", hdr_custo)
-                current_row += 1
-
-                ws.write(current_row, 0, "Componente", hdr)
-                ws.write(current_row, 1, "Valor (R$)", hdr)
-                current_row += 1
-
-                for campo, valor in ad["custos"].items():
+                for campo, valor in data_dict.items():
                     ws.write(current_row, 0, campo)
+                    # Aplica formatação customizada
                     if isinstance(valor, (int, float)):
-                        if "%" in campo:
-                            ws.write(current_row, 1, valor / 100, percent)
-                        else:
-                            ws.write(current_row, 1, valor, money)
-                    else:
-                        ws.write(current_row, 1, valor)
+                        if "%" in campo: ws.write(current_row, 1, valor / 100, percent)
+                        elif "R$" in campo: ws.write(current_row, 1, valor, money)
+                        else: ws.write(current_row, 1, valor)
+                    else: ws.write(current_row, 1, valor)
                     current_row += 1
+                
+                # Adiciona a tabela
+                ws.add_table(start_table_row, 0, current_row - 1, 1, 
+                             {'style': 'Table Style Medium 2', 'columns': [{'header': col1_name}, {'header': col2_name}]})
+                current_row += 1 # Espaçador
 
-                current_row += 1
+            # SEÇÕES COMO TABELAS
+            write_section_as_table("DADOS GERAIS", ad["dados_gerais"], hdr_secao)
+            write_section_as_table("PARTES ENVOLVIDAS", ad["partes"], hdr_secao)
+            write_section_as_table("TRIBUTOS", ad["tributos"], hdr_secao)
+            if "custos" in ad:
+                write_section_as_table("ANÁLISE DE CUSTOS", ad["custos"], hdr_custo, col1_name="Componente", col2_name="Valor (R$)")
 
             # SEÇÃO 5: ITENS DETALHADOS COM CUSTOS
-            ws.write(current_row, 0, "ITENS DETALHADOS COM CUSTOS", hdr_secao)
-            for col in range(1, 12):
-                ws.write(current_row, col, "", hdr_secao)
+            ws.merge_range(current_row, 0, current_row, 10, "ITENS DETALHADOS COM CUSTOS", hdr_secao)
             current_row += 1
 
             if ad["itens"]:
-                cabecalhos_itens = [
-                    "Seq", "Código", "Descrição", "Qtd", "Unidade",
-                    "Valor Unit. USD", "Unid/Caixa", "Valor Total USD",
-                    "Custo Total R$", "Custo Unit. R$", "Custo/Peça R$"
-                ]
+                df_itens = pd.DataFrame(ad["itens"])
+                # Adicionar colunas de custo calculadas
+                df_itens["Custo Total R$"] = [item.get("Custo Total Item R$", 0) for item in ad["itens"]]
+                df_itens["Custo Unit. R$"] = [item.get("Custo Unitário R$", 0) for item in ad["itens"]]
+                df_itens["Custo/Peça R$"] = [item.get("Custo por Peça R$", "N/A") for item in ad["itens"]]
+                
+                # Organizar colunas
+                cols_ordem = ["Seq", "Código", "Descrição", "Qtd", "Unidade", "Valor Unit. USD", 
+                              "Unid/Caixa", "Valor Total USD", "Custo Total R$", "Custo Unit. R$", "Custo/Peça R$"]
+                df_itens = df_itens[cols_ordem]
 
-                for col, cabecalho in enumerate(cabecalhos_itens):
-                    header_format = hdr_custo if "Custo" in cabecalho else hdr
-                    ws.write(current_row, col, cabecalho, header_format)
-                current_row += 1
+                start_table_row = current_row
+                df_itens.to_excel(wr, sheet_name=aba_nome, startrow=start_table_row, index=False)
+                
+                # Adicionar tabela
+                (rows, cols) = df_itens.shape
+                ws.add_table(start_table_row, 0, start_table_row + rows, cols - 1,
+                             {'style': 'Table Style Medium 9', 'columns': [{'header': c} for c in df_itens.columns]})
+                
+                current_row += rows + 2 # Avança a linha
 
-                for item in ad["itens"]:
-                    ws.write(current_row, 0, item["Seq"])
-                    ws.write(current_row, 1, item["Código"])
-                    ws.write(current_row, 2, item["Descrição"])
-                    ws.write(current_row, 3, item["Qtd"])
-                    ws.write(current_row, 4, item["Unidade"])
-                    ws.write(current_row, 5, item["Valor Unit. USD"], money)
-                    ws.write(current_row, 6, item["Unid/Caixa"])
-                    ws.write(current_row, 7, item["Valor Total USD"], money)
-                    ws.write(current_row, 8, item.get("Custo Total Item R$", 0), money)
-                    ws.write(current_row, 9, item.get("Custo Unitário R$", 0), money)
-
-                    custo_peca = item.get("Custo por Peça R$", "N/A")
-                    if custo_peca != "N/A":
-                        ws.write(current_row, 10, custo_peca, money)
-                    else:
-                        ws.write(current_row, 10, "N/A")
-
-                    current_row += 1
+                # Formatação de colunas sobre a tabela
+                money_cols = [5, 7, 8, 9, 10]
+                for c_idx in money_cols:
+                    # Aplica o formato para todas as linhas de dados da tabela
+                    ws.set_column(c_idx, c_idx, None, money)
 
                 # Linha de totais
-                current_row += 1
                 ws.write(current_row, 2, "TOTAL:", hdr)
                 total_qtd = sum(item["Qtd"] for item in ad["itens"])
                 total_valor_usd = sum(item["Valor Total USD"] for item in ad["itens"])
@@ -603,8 +557,11 @@ def gera_excel_completo(d: dict, xlsx: Path):
                 ws.write(current_row, 3, total_qtd, hdr)
                 ws.write(current_row, 7, total_valor_usd, money)
                 ws.write(current_row, 8, total_custo_brl, money)
+
             else:
                 ws.write(current_row, 0, "Nenhum item detalhado encontrado", hdr)
+                current_row += 1
+
 
             # Configurar larguras das colunas
             ws.set_column(0, 0, 8)  # Seq
@@ -620,11 +577,12 @@ def gera_excel_completo(d: dict, xlsx: Path):
             ws.set_column(10, 10, 15)  # Custo/Peça
 
         # Dados complementares
-        pd.DataFrame({"Dados Complementares": [d["info_complementar"]]}).to_excel(
-            wr, "99_Complementar", index=False)
+        df_comp = pd.DataFrame({"Dados Complementares": [d["info_complementar"]]})
+        df_comp.to_excel(wr, "99_Complementar", index=False)
         ws = wr.sheets["99_Complementar"]
         ws.set_column(0, 0, 120)
-        ws.write_row(0, 0, ["Dados Complementares"], hdr)
+        add_table(ws, df_comp)
+
 
         # === CROQUI DE NOTA FISCAL DE ENTRADA DE IMPORTAÇÃO - MODELO 55 === #
         ws_croqui = wb.add_worksheet("Croqui_NFe_Entrada")
@@ -632,7 +590,7 @@ def gera_excel_completo(d: dict, xlsx: Path):
 
         def secao(titulo):
             nonlocal linha
-            ws_croqui.write(linha, 0, titulo, hdr_secao)
+            ws_croqui.merge_range(linha, 0, linha, 13, titulo, hdr_secao)
             linha += 1
 
         secao("CABEÇALHO DA NOTA")
@@ -662,63 +620,63 @@ def gera_excel_completo(d: dict, xlsx: Path):
 
         # PRODUTOS E SERVIÇOS
         secao("PRODUTOS E SERVIÇOS")
-        cols_itens = ["Seq", "Descrição", "NCM", "Quantidade", "Unidade", "Valor Unit. (R$)", "Valor Total (R$)", 
-                    "CFOP", "Origem", "CST ICMS", "Alq. ICMS (%)", "IPI CST", "IPI Alíq. (%)", "Fabricante"]
-        for idx, c in enumerate(cols_itens):
-            ws_croqui.write(linha, idx, c, hdr)
-        linha += 1
+        
+        itens_nfe = []
         seq_nota = 1
         for ad in d["adicoes"]:
-            ncm = ad["dados_gerais"]["NCM"]
-            fabricante = ad["partes"]["Fabricante"]
-            origem = ad["partes"]["País Origem"]
-            cfop = "3102"
-            cst_icms = "00"
-            icms_aliq = 18.0  # ajuste conforme estado/legislação
-            ipi_cst = "00"
-            ipi_aliq = round(ad["tributos"].get("IPI Alíq. (%)", 0)*100, 2)
             for item in ad["itens"]:
-                valor_unit_brl = item.get("Custo Unitário R$", 0)
-                valor_total_brl = item.get("Custo Total Item R$", 0)
-                ws_croqui.write_row(
-                    linha, 0,
-                    [seq_nota, item["Descrição"], ncm, item["Qtd"], item["Unidade"], valor_unit_brl, valor_total_brl,
-                    cfop, "3", cst_icms, icms_aliq, ipi_cst, ipi_aliq, fabricante]
-                )
-                linha += 1
+                itens_nfe.append({
+                    "Seq": seq_nota,
+                    "Descrição": item["Descrição"],
+                    "NCM": ad["dados_gerais"]["NCM"],
+                    "Quantidade": item["Qtd"],
+                    "Unidade": item["Unidade"],
+                    "Valor Unit. (R$)": item.get("Custo Unitário R$", 0),
+                    "Valor Total (R$)": item.get("Custo Total Item R$", 0),
+                    "CFOP": "3102",
+                    "Origem": "3", # Estrangeira
+                    "CST ICMS": "00",
+                    "Alq. ICMS (%)": 18.0,
+                    "IPI CST": "00",
+                    "IPI Alíq. (%)": round(ad["tributos"].get("IPI Alíq. (%)", 0)*100, 2),
+                    "Fabricante": ad["partes"]["Fabricante"]
+                })
                 seq_nota += 1
+        
+        if itens_nfe:
+            df_nfe = pd.DataFrame(itens_nfe)
+            df_nfe.to_excel(wr, sheet_name="Croqui_NFe_Entrada", startrow=linha, index=False)
+            
+            (rows, cols) = df_nfe.shape
+            ws_croqui.add_table(linha, 0, linha + rows, cols - 1,
+                                {'style': 'Table Style Medium 9', 'columns': [{'header': c} for c in df_nfe.columns]})
+            linha += rows + 2
 
         # BASE E CÁLCULO DO ICMS
-        linha += 2
         secao("BASE DE CÁLCULO DO ICMS IMPORTAÇÃO")
-        ws_croqui.write_row(linha, 0, ["Valor Aduaneiro", d["valores"]["Valor Aduaneiro R$"]])
-        ws_croqui.write_row(linha+1, 0, ["II", d["tributos"]["II R$"]])
-        ws_croqui.write_row(linha+2, 0, ["IPI", d["tributos"]["IPI R$"]])
-        ws_croqui.write_row(linha+3, 0, ["PIS", d["tributos"]["PIS R$"]])
-        ws_croqui.write_row(linha+4, 0, ["COFINS", d["tributos"]["COFINS R$"]])
-        outras_desp = d["valores"].get("Siscomex R$", 0) + d["valores"].get("AFRMM R$", 0)
-        ws_croqui.write_row(linha+5, 0, ["Outras despesas", outras_desp])
-        linha += 6
-
-        base_icms_sem_icms = (
-            d["valores"]["Valor Aduaneiro R$"] +
-            d["tributos"]["II R$"] + d["tributos"]["IPI R$"] +
-            d["tributos"]["PIS R$"] + d["tributos"]["COFINS R$"] + outras_desp
-        )
-        ws_croqui.write_row(linha, 0, ["Base ICMS Sem ICMS", base_icms_sem_icms])
+        base_icms_data = {
+            "Valor Aduaneiro": d["valores"]["Valor Aduaneiro R$"],
+            "II": d["tributos"]["II R$"],
+            "IPI": d["tributos"]["IPI R$"],
+            "PIS": d["tributos"]["PIS R$"],
+            "COFINS": d["tributos"]["COFINS R$"],
+            "Outras despesas": d["valores"].get("Siscomex R$", 0) + d["valores"].get("AFRMM R$", 0)
+        }
+        for k,v in base_icms_data.items(): ws_croqui.write_row(linha, 0, [k, v]); linha += 1
+        
         linha += 1
+        base_icms_sem_icms = sum(base_icms_data.values())
+        ws_croqui.write_row(linha, 0, ["Base ICMS Sem ICMS", base_icms_sem_icms]); linha += 1
         aliq = 18.0 / 100
         base_final_icms = round(base_icms_sem_icms / (1 - aliq), 2)
-        ws_croqui.write_row(linha, 0, ["Base Final do ICMS", base_final_icms])
-        linha += 1
-        ws_croqui.write_row(linha, 0, ["ICMS a Recolher", round(base_final_icms * aliq, 2)])
-        linha += 2
+        ws_croqui.write_row(linha, 0, ["Base Final do ICMS", base_final_icms]); linha += 1
+        ws_croqui.write_row(linha, 0, ["ICMS a Recolher", round(base_final_icms * aliq, 2)]); linha += 2
 
         # SEÇÃO EXTRA: INFORMAÇÕES COMPLEMENTARES
         secao("INFORMAÇÕES COMPLEMENTARES / OBSERVAÇÕES OBRIGATÓRIAS")
         info_extra = f"DI: {d['cabecalho']['DI']} - Data Registro: {d['cabecalho']['Data registro']}\n"
         info_extra += d["info_complementar"]
-        ws_croqui.write(linha, 0, info_extra)
+        ws_croqui.merge_range(linha, 0, linha + 2, 13, info_extra)
         linha += 4
 
         # Ajuste visual
