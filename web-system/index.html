@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Expertzy Inteligência Tributária">
+    <meta name="description" content="Sistema de cálculo de custos de importação - Processamento de DI (Declaração de Importação)">
+    <title>Importação DI - Expertzy Inteligência Tributária</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/expertzy-brand.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/main.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+    
+    <!-- Preload fonts for performance -->
+    <link rel="preload" href="assets/fonts/gadeg-thin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/brfirma-medium.woff2" as="font" type="font/woff2" crossorigin>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div>
+                    <h1 class="app-title">
+                        <span class="title-icon">📊</span>
+                        <div>
+                            Importação DI
+                            <div class="app-subtitle">Sistema de Cálculo de Custos</div>
+                        </div>
+                    </h1>
+                </div>
+                <div class="header-actions">
+                    <div class="expertzy-logo-space">
+                        LOGO EXPERTZY
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="expertzy-card">
+                    <div class="expertzy-card-header">
+                        <h2 class="expertzy-card-title">📁 Importar Arquivo XML da DI</h2>
+                    </div>
+                    
+                    <div class="drag-drop-zone" id="dragDropZone">
+                        <span class="drag-drop-icon">📄</span>
+                        <div class="drag-drop-text">Arraste seu arquivo XML aqui</div>
+                        <div class="drag-drop-hint">ou clique para selecionar</div>
+                        <input type="file" id="fileInput" class="file-input-hidden" accept=".xml" />
+                    </div>
+                    
+                    <div id="fileInfo" class="expertzy-hidden">
+                        <div class="status-indicator success">
+                            <span class="status-icon">✓</span>
+                            <span id="fileName">Arquivo selecionado</span>
+                        </div>
+                        <div class="progress-container expertzy-hidden" id="progressContainer">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-text" id="progressText">Processando...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuration Section -->
+            <section class="config-section expertzy-hidden" id="configSection">
+                <div class="config-panel">
+                    <h3 class="config-title">
+                        ⚙️ Configuração de Custos (INCOTERM)
+                    </h3>
+                    
+                    <div id="incotermDetected" class="expertzy-hidden">
+                        <div class="incoterm-indicator detected">
+                            <span>🎯</span>
+                            <span id="detectedIncotermText">INCOTERM detectado: FOB</span>
+                        </div>
+                        <br>
+                    </div>
+                    
+                    <div class="config-options">
+                        <label class="config-option">
+                            <input type="checkbox" id="freteEmbutido" class="expertzy-checkbox">
+                            <span>
+                                Frete embutido no VCMV
+                                <small class="config-hint">Marque se INCOTERM for CFR ou CIF</small>
+                            </span>
+                        </label>
+                        
+                        <label class="config-option">
+                            <input type="checkbox" id="seguroEmbutido" class="expertzy-checkbox">
+                            <span>
+                                Seguro embutido no VCMV
+                                <small class="config-hint">Marque se INCOTERM for CIF</small>
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Configuração ICMS e CFOP -->
+                    <div class="config-section-divider">
+                        <h4 class="config-subsection-title">
+                            💰 Configuração de ICMS e CFOP
+                        </h4>
+                    </div>
+                    
+                    <div class="config-options">
+                        <div class="config-option">
+                            <label for="estadoDestino">Estado de destino (UF):</label>
+                            <select id="estadoDestino" class="expertzy-select">
+                                <option value="">Selecionar estado...</option>
+                                <option value="AC">Acre (AC)</option>
+                                <option value="AL">Alagoas (AL)</option>
+                                <option value="AP">Amapá (AP)</option>
+                                <option value="AM">Amazonas (AM)</option>
+                                <option value="BA">Bahia (BA)</option>
+                                <option value="CE">Ceará (CE)</option>
+                                <option value="DF">Distrito Federal (DF)</option>
+                                <option value="ES">Espírito Santo (ES)</option>
+                                <option value="GO" selected>Goiás (GO)</option>
+                                <option value="MA">Maranhão (MA)</option>
+                                <option value="MT">Mato Grosso (MT)</option>
+                                <option value="MS">Mato Grosso do Sul (MS)</option>
+                                <option value="MG">Minas Gerais (MG)</option>
+                                <option value="PA">Pará (PA)</option>
+                                <option value="PB">Paraíba (PB)</option>
+                                <option value="PR">Paraná (PR)</option>
+                                <option value="PE">Pernambuco (PE)</option>
+                                <option value="PI">Piauí (PI)</option>
+                                <option value="RJ">Rio de Janeiro (RJ)</option>
+                                <option value="RN">Rio Grande do Norte (RN)</option>
+                                <option value="RS">Rio Grande do Sul (RS)</option>
+                                <option value="RO">Rondônia (RO)</option>
+                                <option value="RR">Roraima (RR)</option>
+                                <option value="SC">Santa Catarina (SC)</option>
+                                <option value="SP">São Paulo (SP)</option>
+                                <option value="SE">Sergipe (SE)</option>
+                                <option value="TO">Tocantins (TO)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="config-option">
+                            <label for="aliquotaICMSPadrao">Alíquota ICMS padrão (%):</label>
+                            <input type="number" id="aliquotaICMSPadrao" class="expertzy-input" 
+                                   value="19" min="0" max="100" step="0.01" 
+                                   placeholder="19.00">
+                            <small class="config-hint">Será aplicada a todas as adições inicialmente</small>
+                        </div>
+
+                        <div class="config-option">
+                            <label for="cfopPadrao">CFOP padrão:</label>
+                            <select id="cfopPadrao" class="expertzy-select">
+                                <option value="">Selecionar CFOP...</option>
+                                <option value="3101">3101 - Compra para industrialização</option>
+                                <option value="3102" selected>3102 - Compra para comercialização</option>
+                                <option value="3126">3126 - Compra para utilização na prestação de serviço</option>
+                                <option value="3127">3127 - Compra para ativo imobilizado</option>
+                                <option value="3128">3128 - Compra para consumo</option>
+                                <option value="3129">3129 - Compra para material de uso ou consumo</option>
+                                <option value="3132">3132 - Aquisição de serviço de transporte</option>
+                                <option value="3251">3251 - Compra de energia elétrica para distribuição ou comercialização</option>
+                                <option value="3301">3301 - Aquisição de serviço de comunicação</option>
+                            </select>
+                            <small class="config-hint">Será aplicado a todas as adições inicialmente</small>
+                        </div>
+                    </div>
+                    
+                    <div class="expertzy-flex expertzy-justify-center">
+                        <button class="expertzy-btn expertzy-btn-primary" id="processBtn" disabled>
+                            <span>💾</span>
+                            Processar e Calcular Custos
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section expertzy-hidden" id="resultsSection">
+                <!-- Summary Cards -->
+                <div class="results-summary" id="resultsSummary">
+                    <div class="summary-card">
+                        <div class="summary-label">Total de Adições</div>
+                        <div class="summary-value" id="totalAdicoes">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Total de Itens</div>
+                        <div class="summary-value" id="totalItens">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Valor FOB</div>
+                        <div class="summary-value" id="valorFOB">R$ 0,00</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Custo Total</div>
+                        <div class="summary-value" id="custoTotal">R$ 0,00</div>
+                    </div>
+                </div>
+
+                <!-- Validation Results -->
+                <div class="validation-section" id="validationSection">
+                    <div class="validation-header">
+                        <h3 class="validation-title">
+                            🔍 Validação dos Cálculos
+                        </h3>
+                    </div>
+                    <div class="validation-results" id="validationResults">
+                        <!-- Validation items will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Results Table -->
+                <div class="results-container" id="resultsContainer">
+                    <div class="results-header">
+                        <h3 class="results-title">📋 Resultados Detalhados</h3>
+                        <div class="results-actions">
+                            <button class="expertzy-btn expertzy-btn-outline" id="expandAllBtn">
+                                Expandir Todas
+                            </button>
+                            <button class="expertzy-btn expertzy-btn-outline" id="collapseAllBtn">
+                                Contrair Todas
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <div class="table-responsive">
+                            <table class="expertzy-table" id="resultsTable">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>Adição</th>
+                                        <th>NCM</th>
+                                        <th>Descrição</th>
+                                        <th>INCOTERM</th>
+                                        <th>CFOP</th>
+                                        <th>ICMS %</th>
+                                        <th>VCMV R$</th>
+                                        <th>Custo Total R$</th>
+                                        <th>II R$</th>
+                                        <th>% Participação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsTableBody">
+                                    <!-- Table rows will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Export Section -->
+            <section class="export-section expertzy-hidden" id="exportSection">
+                <div class="export-actions">
+                    <button class="export-btn" id="exportExcelBtn" disabled>
+                        <span class="export-icon">📊</span>
+                        <span class="export-label">Excel Completo</span>
+                        <span class="export-description">Relatório multi-aba com todos os detalhes</span>
+                    </button>
+                    
+                    <button class="export-btn" id="exportCSVBtn" disabled>
+                        <span class="export-icon">📄</span>
+                        <span class="export-label">CSV Resumo</span>
+                        <span class="export-description">Dados para importação em ERP</span>
+                    </button>
+                    
+                    <button class="export-btn" id="exportPDFBtn" disabled>
+                        <span class="export-icon">📋</span>
+                        <span class="export-label">Relatório PDF</span>
+                        <span class="export-description">Resumo executivo formatado</span>
+                    </button>
+                    
+                    <button class="export-btn" id="saveConfigBtn" disabled>
+                        <span class="export-icon">💾</span>
+                        <span class="export-label">Salvar Dados</span>
+                        <span class="export-description">Histórico local para comparações</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Error Container -->
+            <div class="error-container expertzy-hidden" id="errorContainer">
+                <div class="error-title">
+                    <span>⚠️</span>
+                    Erro no Processamento
+                </div>
+                <div class="error-message" id="errorMessage">
+                    Ocorreu um erro durante o processamento do arquivo.
+                </div>
+                <details>
+                    <summary>Detalhes técnicos</summary>
+                    <div class="error-details" id="errorDetails">
+                        <!-- Error details will be populated by JavaScript -->
+                    </div>
+                </details>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">📁</div>
+                <h3 class="empty-title">Pronto para processar sua DI</h3>
+                <p class="empty-description">
+                    Faça upload do arquivo XML da Declaração de Importação para começar o cálculo 
+                    automático de custos unitários com distribuição proporcional de impostos e despesas.
+                </p>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>© 2025 Expertzy Inteligência Tributária</p>
+        </footer>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer">
+        <!-- Toast notifications will be inserted here by JavaScript -->
+    </div>
+
+    <!-- Biblioteca SheetJS para exportação Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Biblioteca jsPDF para exportação PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- JavaScript Completo com Engine de Cálculo (funciona sem servidor local) -->
+    <script src="js/importa-di-complete.js"></script>
+</body>
+</html>

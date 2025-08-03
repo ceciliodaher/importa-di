@@ -1,0 +1,329 @@
+/*
+EXPERTZY INTELIGÊNCIA TRIBUTÁRIA
+© 2025 Expertzy Inteligência Tributária
+Brand Identity CSS - Implementação da identidade visual corporativa
+
+Cores Corporativas:
+- Vermelho Expertzy: #FF002D
+- Azul Naval: #091A30  
+- Cinza Claro: #FFFFFF
+
+Tipografia:
+- Principal: gadeg thin
+- Secundária: BRFirma Medium
+*/
+
+/* CSS Variables - Paleta de cores e fontes */
+:root {
+    --expertzy-red: #FF002D;
+    --expertzy-blue: #091A30;
+    --expertzy-white: #FFFFFF;
+    --expertzy-gray-light: #F8F9FA;
+    --expertzy-gray-border: rgba(9, 26, 48, 0.1);
+    --expertzy-red-hover: rgba(255, 0, 45, 0.8);
+    --expertzy-blue-light: rgba(9, 26, 48, 0.1);
+    
+    /* Fonts */
+    --font-primary: 'gadeg thin', 'Arial', sans-serif;
+    --font-secondary: 'BRFirma Medium', 'Segoe UI', sans-serif;
+    
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-xxl: 48px;
+    
+    /* Border radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(9, 26, 48, 0.1);
+    --shadow-md: 0 4px 12px rgba(9, 26, 48, 0.1);
+    --shadow-lg: 0 8px 24px rgba(9, 26, 48, 0.15);
+}
+
+/* Typography Classes */
+.expertzy-title {
+    font-family: var(--font-primary);
+    font-weight: 100;
+    color: var(--expertzy-blue);
+    line-height: 1.2;
+}
+
+.expertzy-text {
+    font-family: var(--font-secondary);
+    font-weight: 500;
+    color: var(--expertzy-blue);
+    line-height: 1.6;
+}
+
+.expertzy-text-light {
+    color: var(--expertzy-white);
+}
+
+.expertzy-text-red {
+    color: var(--expertzy-red);
+}
+
+/* Header Styles */
+.expertzy-header {
+    background-color: var(--expertzy-red);
+    color: var(--expertzy-white);
+    font-family: var(--font-primary);
+    padding: var(--spacing-md) var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.expertzy-header h1 {
+    font-size: 1.5rem;
+    font-weight: 100;
+    margin: 0;
+}
+
+/* Content Areas */
+.expertzy-content {
+    background-color: var(--expertzy-white);
+    color: var(--expertzy-blue);
+    font-family: var(--font-secondary);
+    padding: var(--spacing-lg);
+}
+
+.expertzy-section {
+    background: var(--expertzy-white);
+    border: 1px solid var(--expertzy-gray-border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Button Styles */
+.expertzy-btn {
+    font-family: var(--font-secondary);
+    font-weight: 500;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.expertzy-btn-primary {
+    background-color: var(--expertzy-red);
+    color: var(--expertzy-white);
+}
+
+.expertzy-btn-primary:hover {
+    background-color: var(--expertzy-red-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.expertzy-btn-secondary {
+    background-color: transparent;
+    color: var(--expertzy-red);
+    border: 1px solid var(--expertzy-red);
+}
+
+.expertzy-btn-secondary:hover {
+    background-color: var(--expertzy-red);
+    color: var(--expertzy-white);
+}
+
+.expertzy-btn-outline {
+    background-color: transparent;
+    color: var(--expertzy-blue);
+    border: 1px solid var(--expertzy-gray-border);
+}
+
+.expertzy-btn-outline:hover {
+    background-color: var(--expertzy-blue-light);
+    border-color: var(--expertzy-blue);
+}
+
+.expertzy-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Form Elements */
+.expertzy-input {
+    font-family: var(--font-secondary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--expertzy-gray-border);
+    border-radius: var(--radius-sm);
+    background: var(--expertzy-white);
+    color: var(--expertzy-blue);
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+}
+
+.expertzy-input:focus {
+    border-color: var(--expertzy-red);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 0, 45, 0.1);
+}
+
+.expertzy-checkbox {
+    accent-color: var(--expertzy-red);
+    margin-right: var(--spacing-sm);
+}
+
+/* Table Styles */
+.expertzy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-secondary);
+    background: var(--expertzy-white);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.expertzy-table th {
+    background-color: var(--expertzy-blue);
+    color: var(--expertzy-white);
+    padding: var(--spacing-md);
+    text-align: left;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.expertzy-table td {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--expertzy-gray-border);
+    font-size: 0.9rem;
+}
+
+.expertzy-table tr:nth-child(even) {
+    background-color: var(--expertzy-gray-light);
+}
+
+.expertzy-table tr:hover {
+    background-color: var(--expertzy-blue-light);
+}
+
+/* Card Styles */
+.expertzy-card {
+    background: var(--expertzy-white);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--expertzy-gray-border);
+    transition: box-shadow 0.2s ease;
+}
+
+.expertzy-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.expertzy-card-header {
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--expertzy-gray-border);
+}
+
+.expertzy-card-title {
+    font-family: var(--font-primary);
+    font-size: 1.1rem;
+    color: var(--expertzy-blue);
+    margin: 0;
+}
+
+/* Alert/Status Styles */
+.expertzy-alert {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-secondary);
+    font-size: 0.9rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.expertzy-alert-success {
+    background-color: #D4F1D4;
+    color: #0F4C0F;
+    border-left: 4px solid #22C55E;
+}
+
+.expertzy-alert-error {
+    background-color: #FFE6E6;
+    color: #7F1D1D;
+    border-left: 4px solid var(--expertzy-red);
+}
+
+.expertzy-alert-warning {
+    background-color: #FFF3CD;
+    color: #7C4A03;
+    border-left: 4px solid #F59E0B;
+}
+
+.expertzy-alert-info {
+    background-color: var(--expertzy-blue-light);
+    color: var(--expertzy-blue);
+    border-left: 4px solid var(--expertzy-blue);
+}
+
+/* Footer */
+.expertzy-footer {
+    background-color: var(--expertzy-white);
+    color: var(--expertzy-blue);
+    text-align: center;
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--expertzy-gray-border);
+    font-family: var(--font-secondary);
+    font-size: 0.8rem;
+    margin-top: auto;
+}
+
+/* Logo Space */
+.expertzy-logo-space {
+    min-width: 120px;
+    min-height: 40px;
+    background: var(--expertzy-white);
+    border: 2px dashed var(--expertzy-gray-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--expertzy-blue);
+    font-family: var(--font-secondary);
+    font-size: 0.8rem;
+    border-radius: var(--radius-sm);
+}
+
+/* Utility Classes */
+.expertzy-text-center { text-align: center; }
+.expertzy-text-right { text-align: right; }
+.expertzy-text-left { text-align: left; }
+
+.expertzy-m-0 { margin: 0; }
+.expertzy-mb-sm { margin-bottom: var(--spacing-sm); }
+.expertzy-mb-md { margin-bottom: var(--spacing-md); }
+.expertzy-mb-lg { margin-bottom: var(--spacing-lg); }
+
+.expertzy-p-0 { padding: 0; }
+.expertzy-p-sm { padding: var(--spacing-sm); }
+.expertzy-p-md { padding: var(--spacing-md); }
+.expertzy-p-lg { padding: var(--spacing-lg); }
+
+.expertzy-hidden { display: none; }
+.expertzy-flex { display: flex; }
+.expertzy-block { display: block; }
+.expertzy-inline-block { display: inline-block; }
+
+.expertzy-gap-sm { gap: var(--spacing-sm); }
+.expertzy-gap-md { gap: var(--spacing-md); }
+.expertzy-gap-lg { gap: var(--spacing-lg); }
+
+.expertzy-items-center { align-items: center; }
+.expertzy-justify-center { justify-content: center; }
+.expertzy-justify-between { justify-content: space-between; }
